@@ -1,0 +1,129 @@
+package com.websocket.chat_app.controller;
+
+import com.websocket.chat_app.models.ChatMessage;
+import com.websocket.chat_app.models.ChatNotification;
+import com.websocket.chat_app.service.ChatMessageService;
+import com.websocket.chat_app.utils.EncryptionUtil;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.jms.annotation.JmsListener;
+import org.springframework.jms.core.JmsTemplate;
+import org.springframework.jms.core.MessagePostProcessor;
+import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+import java.util.List;
+
+
+/*
+* 1. Message Sent to ActiveMQ Queue: When a message is generated, it is encrypted and sent to an ActiveMQ queue.
+  2. Spring Application Consumes the Message: The Spring application listens for messages from this queue. Upon receiving a
+* message, it decrypts the message content.
+* 3. Forward Message to WebSocket Endpoint: The decrypted message is then
+* forwarded to the appropriate WebSocket endpoint to be sent to the client.
+
+* */
+@Controller
+@Slf4j
+@RequiredArgsConstructor
+public class ChatController {
+
+    private final SimpMessagingTemplate messagingTemplate;
+    private final ChatMessageService chatMessageService;
+    private final JmsTemplate jmsTemplate;
+
+//    @MessageMapping("/chat")
+//    public void processMessage(@Payload ChatMessage chatMessage) {
+//        log.info("Sending chat message from {} to {}", chatMessage.getSenderId(), chatMessage.getRecipientId());
+//        ChatMessage savedMsg = chatMessageService.save(chatMessage);
+//        // Decrypt the content before sending
+//        String decryptedContent = EncryptionUtil.decrypt(savedMsg.getContent());
+//
+//        // Create a new ChatNotification with decrypted content
+//        ChatNotification decryptedNotification = new ChatNotification(
+//                savedMsg.getId(),
+//                savedMsg.getSenderId(),
+//                savedMsg.getRecipientId(),
+//                decryptedContent
+//        );
+//        // Constructing dynamic queue name
+//        String destination = String.format("/queue/%s/messages", chatMessage.getRecipientId());
+//        log.info("Sending message to dynamic queue: {}", destination);
+//        messagingTemplate.convertAndSend(destination, decryptedNotification);
+//        log.info("Message sent to dynamic queue: {} successfully.", destination);
+//    }
+
+    @MessageMapping("/chat")
+    public void processMessagetoActiveMQ(@Payload ChatMessage chatMessage) {
+        log.info("Sending chat message from {} to {}", chatMessage.getSenderId(), chatMessage.getRecipientId());
+        ChatMessage savedMsg = chatMessageService.save(chatMessage);
+        ChatNotification notification = new ChatNotification(
+                savedMsg.getId(),
+                savedMsg.getSenderId(),
+                savedMsg.getRecipientId(),
+                savedMsg.getContent()
+        );
+
+        // Constructing dynamic queue name
+        String userQueueName = String.format("queue.%s.messages", chatMessage.getRecipientId());
+        log.info("Sending message to ActiveMQ queue: {}", userQueueName);
+
+        jmsTemplate.convertAndSend(userQueueName, notification, new MessagePostProcessor() {
+            @Override
+            public Message postProcessMessage(Message message) throws JMSException {
+                message.setStringProperty("JMSDestination", userQueueName);
+                return message;
+            }
+        });
+    }
+
+    @GetMapping("/messages/{senderId}/{recipientId}")
+    public ResponseEntity<List<ChatMessage>> findChatMessages(@PathVariable String senderId,
+                                                 @PathVariable String recipientId) {
+        log.info("GETTING MESSAGES for sender {} and receiver {} ........ ", senderId, recipientId);
+        return ResponseEntity
+                .ok(chatMessageService.findChatMessages(senderId, recipientId));
+    }
+
+
+    @JmsListener(destination = "queue.*.messages")
+    public void receiveMessageFromActiveMQ(ChatNotification notification,
+                                           @Header(name = "JMSDestination", required = false) String destination) {
+        log.info("Received notification: {}", notification);
+        if (destination != null) {
+            log.info("Message destination: {}", destination);
+            // Extract recipient ID from the destination
+            String recipientId = destination.split("\\.")[1]; // Extract the recipientId between "queue." and ".messages"
+
+            // Decrypt the content before sending
+            String decryptedContent = EncryptionUtil.decrypt(notification.getContent());
+
+            // Create a new ChatNotification with decrypted content
+            ChatNotification decryptedNotification = new ChatNotification(
+                    notification.getId(),
+                    notification.getSenderId(),
+                    notification.getRecipientId(),
+                    decryptedContent
+            );
+
+            // Send message to the specific user's WebSocket queue
+            String websocketDestination = String.format("/queue/%s/messages", recipientId);
+
+//            The messagingTemplate.convertAndSend(websocketDestination, decryptedNotification) line is crucial because
+//            it forwards the decrypted message to the specific WebSocket endpoint (e.g., /queue/user123/messages) where
+//            the intended client is subscribed. This ensures that each user receives their messages in real-time
+//            through their WebSocket connection.
+            messagingTemplate.convertAndSend(websocketDestination, decryptedNotification);
+        } else {
+            log.warn("JMSDestination header is missing.");
+        }
+    }
+}
