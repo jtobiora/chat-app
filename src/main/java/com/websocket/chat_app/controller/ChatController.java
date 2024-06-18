@@ -2,7 +2,9 @@ package com.websocket.chat_app.controller;
 
 import com.websocket.chat_app.models.ChatMessage;
 import com.websocket.chat_app.models.ChatNotification;
+import com.websocket.chat_app.models.User;
 import com.websocket.chat_app.service.ChatMessageService;
+import com.websocket.chat_app.service.UserService;
 import com.websocket.chat_app.utils.EncryptionUtil;
 import jakarta.jms.JMSException;
 import jakarta.jms.Message;
@@ -39,6 +41,8 @@ public class ChatController {
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatMessageService chatMessageService;
     private final JmsTemplate jmsTemplate;
+    private final UserService userService;
+    private final SimpMessagingTemplate simpMessagingTemplate;
 
 //    @MessageMapping("/chat")
 //    public void processMessage(@Payload ChatMessage chatMessage) {
@@ -126,4 +130,38 @@ public class ChatController {
             log.warn("JMSDestination header is missing.");
         }
     }
+
+    /*
+     * When the user is connected, the payload is sent to this endpoint. The connected user is saved and his
+     * connection is broadcast to the public topic `/topic/public`so that he is seen by all those who have subscribed to the
+     * public topic
+     * */
+    @MessageMapping("/user.addUser")
+    //@SendTo("/user/public")
+    public void addUser(@Payload User user) {
+        userService.saveUser(user);
+        simpMessagingTemplate.convertAndSend("/topic/public", user);
+    }
+
+    /*
+     * When the user is disconnected from websocket, his disconnection is broadcast to the public topic `/topic/public`so that he is
+     * seen to have left the chat by all those who have subscribed to the
+     * public topic
+     * */
+    @MessageMapping("/user.disconnectUser")
+    //@SendTo("/user/public")
+    public void disconnectUser(@Payload User user) {
+        userService.disconnect(user);
+        simpMessagingTemplate.convertAndSend("/topic/public", user);
+    }
+
+//    @GetMapping("/messages/{senderId}/{recipientId}/count")
+//    public ResponseEntity<Long> countNewMessages(
+//            @PathVariable String senderId,
+//            @PathVariable String recipientId) {
+//
+//        return ResponseEntity
+//                .ok(chatMessageService.countNewMessages(senderId, recipientId));
+//
+//    }
 }

@@ -2,6 +2,7 @@ package com.websocket.chat_app.service;
 
 
 import com.websocket.chat_app.models.ChatMessage;
+import com.websocket.chat_app.models.MessageStatus;
 import com.websocket.chat_app.repository.ChatMessageRepository;
 import com.websocket.chat_app.utils.EncryptionUtil;
 import lombok.RequiredArgsConstructor;
@@ -51,4 +52,9 @@ public class ChatMessageService {
             return new ArrayList<>();
         }
     }
+
+//    public long countNewMessages(String senderId, String recipientId) {
+//        return repository.countBySenderIdAndRecipientIdAndStatus(
+//                senderId, recipientId, MessageStatus.RECEIVED);
+//    }
 }
