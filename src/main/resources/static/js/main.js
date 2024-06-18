@@ -8,11 +8,14 @@ const messageInput = document.querySelector('#message');
 const connectingElement = document.querySelector('.connecting');
 const chatArea = document.querySelector('#chat-messages');
 const logout = document.querySelector('#logout');
+const createGroupForm = document.querySelector('#createGroupForm');
+const addUserToGroupForm = document.querySelector('#addUserToGroupForm');
 
 let stompClient = null;
 let nickname = null;
 let fullname = null;
 let selectedUserId = null;
+
 
 function connect(event) {
     nickname = document.querySelector('#nickname').value.trim();
@@ -22,7 +25,7 @@ function connect(event) {
         usernamePage.classList.add('hidden');
         chatPage.classList.remove('hidden');
 
-        const socket = new SockJS('https://localhost:8092/w_s');
+        const socket = new SockJS('https://localhost:8091/w_s');
         stompClient = Stomp.over(socket);
 
         stompClient.connect({}, onConnected, onError);
@@ -30,11 +33,10 @@ function connect(event) {
     event.preventDefault();
 }
 
-
 function onConnected() {
-    console.log(`Subscribing to: /queue/${nickname}/messages`);
+    console.log(`Subscribing to::::: /queue/${nickname}/messages`);
     stompClient.subscribe(`/queue/${nickname}/messages`, onMessageReceived); //user subscribes to their own queue for receiving messages
-    console.log(`Subscribed to: /user/${nickname}/queue/messages`);
+    console.log(`Subscribed to: /queue/${nickname}/messages`);
 
     stompClient.subscribe(`/topic/public`, onMessageReceived);
 
@@ -45,10 +47,13 @@ function onConnected() {
     );
     document.querySelector('#connected-user-fullname').textContent = fullname;
     findAndDisplayConnectedUsers().then();
+
+    // Call findAndDisplayGroups after user is connected
+    findAndDisplayGroups().then();
 }
 
 async function findAndDisplayConnectedUsers() {
-    const connectedUsersResponse = await fetch('/users/connected');
+    const connectedUsersResponse = await fetch('/users');
     let connectedUsers = await connectedUsersResponse.json();
     connectedUsers = connectedUsers.filter(user => user.nickName !== nickname);
     const connectedUsersList = document.getElementById('connectedUsers');
@@ -104,7 +109,6 @@ function userItemClick(event) {
     const nbrMsg = clickedUser.querySelector('.nbr-msg');
     nbrMsg.classList.add('hidden');
     nbrMsg.textContent = '0';
-
 }
 
 function displayMessage(senderId, content) {
@@ -132,12 +136,10 @@ async function fetchAndDisplayUserChat() {
     chatArea.scrollTop = chatArea.scrollHeight;
 }
 
-
 function onError() {
     connectingElement.textContent = 'Could not connect to WebSocket server. Please refresh this page to try again!';
     connectingElement.style.color = 'red';
 }
-
 
 function sendMessage(event) {
     const messageContent = messageInput.value.trim();
@@ -155,7 +157,6 @@ function sendMessage(event) {
     chatArea.scrollTop = chatArea.scrollHeight;
     event.preventDefault();
 }
-
 
 async function onMessageReceived(payload) {
     console.log("message received >>>>>>> ", payload);
@@ -192,3 +193,76 @@ usernameForm.addEventListener('submit', connect, true); // step 1
 messageForm.addEventListener('submit', sendMessage, true);
 logout.addEventListener('click', onLogout, true);
 window.onbeforeunload = () => onLogout();
+
+createGroupForm.addEventListener('submit', createGroup, true);
+addUserToGroupForm.addEventListener('submit', addUserToGroup, true);
+
+async function createGroup(event) {
+    event.preventDefault();
+    const groupName = document.querySelector('#groupName').value.trim();
+    if (groupName) {
+        const response = await fetch('/user-groups', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name: groupName })
+        });
+
+        if (response.ok) {
+            document.querySelector('#groupName').value = '';
+            await findAndDisplayGroups();
+        } else {
+            console.error('Failed to create group');
+        }
+    }
+}
+
+async function addUserToGroup(event) {
+    event.preventDefault();
+    const groupId = document.querySelector('#groupId').value;
+    const userId = document.querySelector('#userId').value;
+    if (groupId && userId && stompClient) {
+        stompClient.send("/app/group.addUser", {},
+            JSON.stringify({ groupId: groupId, userId: userId }));
+        await findAndDisplayGroups();
+    }
+}
+
+async function findAndDisplayGroups() {
+    console.log("Finding user groups ......");
+    const groupsResponse = await fetch('/user-groups');
+    const groups = await groupsResponse.json();
+    const groupList = document.getElementById('userGroups');
+    groupList.innerHTML = '';
+
+    groups.forEach(group => {
+        const listItem = document.createElement('li');
+        listItem.classList.add('group-item');
+        listItem.textContent = group.name;
+        groupList.appendChild(listItem);
+    });
+
+    const groupSelect = document.querySelector('#groupId');
+    groupSelect.innerHTML = '';
+    groups.forEach(group => {
+        const option = document.createElement('option');
+        option.value = group.id;
+        option.textContent = group.name;
+        groupSelect.appendChild(option);
+    });
+
+    const usersResponse = await fetch('/users');
+    const users = await usersResponse.json();
+    const userSelect = document.querySelector('#userId');
+    userSelect.innerHTML = '';
+    users.forEach(user => {
+        if (user.nickName !== nickname) {
+            const option = document.createElement('option');
+            option.value = user.nickName;
+            option.textContent = user.fullName;
+            userSelect.appendChild(option);
+        }
+    });
+}
+

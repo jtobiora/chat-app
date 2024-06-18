@@ -12,8 +12,8 @@ body {
 
 .chat-container {
     display: flex;
-    max-width: 800px;
-    min-width: 800px;
+    max-width: 1000px;
+    min-width: 1000px;
     min-height: 600px;
     max-height: 600px;
     margin: 20px;
@@ -24,7 +24,7 @@ body {
     border-radius: 8px;
 }
 
-.users-list {
+.users-list, .groups-list, .group-management {
     flex: 1;
     border-right: 1px solid #ccc;
     padding: 20px;
@@ -38,30 +38,30 @@ body {
     justify-content: space-between;
 }
 
-.users-list-container {
+.users-list-container, .groups-list-container {
     height: 100%;
     overflow-y: scroll;
 }
 
-.users-list h2 {
+.users-list h2, .groups-list h2, .group-management h2 {
     font-size: 1.5rem;
     margin-bottom: 10px;
 }
 
-.users-list ul {
+.users-list ul, .groups-list ul {
     list-style: none;
     padding: 0;
     margin: 0;
 }
 
-.user-item {
+.user-item, .group-item {
     display: flex;
     align-items: center;
     margin-bottom: 8px;
     cursor: pointer;
 }
 
-.user-item.active {
+.user-item.active, .group-item.active {
     background-color: #cdebff;
     color: #4f4f4f;
     padding: 10px;
@@ -75,7 +75,7 @@ body {
     margin-right: 10px;
 }
 
-.user-item span {
+.user-item span, .group-item span {
     font-weight: bold;
 }
 
@@ -100,7 +100,7 @@ body {
     border-radius: 5px;
 }
 
-#chat-messages {
+.chat-messages {
     display: flex;
     flex-direction: column;
     overflow-y: scroll;

@@ -4,6 +4,7 @@ import com.websocket.chat_app.models.ChatGroup;
 import com.websocket.chat_app.models.User;
 import com.websocket.chat_app.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -18,6 +19,7 @@ import java.util.Set;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users")
+@Slf4j
 public class UserController {
 
     private final UserService userService;
@@ -50,6 +52,7 @@ public class UserController {
 
     @GetMapping("/connected")
     public ResponseEntity<List<User>> findConnectedUsers() {
+        log.info("Connected users ....");
         return ResponseEntity.ok(userService.findConnectedUsers());
     }
 

@@ -8,7 +8,7 @@
 </head>
 <body>
 
-<h2>One to One Chat | Spring boot & Websocket</h2>
+<h2>Chat Using Spring Boot & WebSocket</h2>
 
 <div class="user-form" id="username-page">
     <h2>Enter Chatroom</h2>
@@ -27,8 +27,7 @@
     <div class="users-list">
         <div class="users-list-container">
             <h2>Online Users</h2>
-            <ul id="connectedUsers">
-            </ul>
+            <ul id="connectedUsers"></ul>
         </div>
         <div>
             <p id="connected-user-fullname"></p>
@@ -36,10 +35,37 @@
         </div>
     </div>
 
-    <div class="chat-area">
-        <div class="chat-area" id="chat-messages">
+    <div class="groups-list">
+        <div class="groups-list-container">
+            <h2>Groups</h2>
+            <ul id="userGroups"></ul>
+        </div>
+    </div>
+
+    <div class="group-management">
+        <div id="group-form">
+            <h2>Create Group</h2>
+            <form id="createGroupForm">
+                <label for="groupName">Group Name:</label>
+                <input type="text" id="groupName" name="groupName" required>
+                <button type="submit">Create Group</button>
+            </form>
         </div>
 
+        <div id="add-user-to-group-form">
+            <h2>Add User to Group</h2>
+            <form id="addUserToGroupForm">
+                <label for="groupId">Group:</label>
+                <select id="groupId" name="groupId"></select>
+                <label for="userId">User:</label>
+                <select id="userId" name="userId"></select>
+                <button type="submit">Add User to Group</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="chat-area">
+        <div class="chat-messages" id="chat-messages"></div>
         <form id="messageForm" name="messageForm" class="hidden">
             <div class="message-input">
                 <input autocomplete="off" type="text" id="message" placeholder="Type your message...">
