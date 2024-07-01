@@ -73,9 +73,10 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/{userId}/groups/{groupId}")
-    public ResponseEntity<Void> addUserToGroup(@PathVariable Long userId, @PathVariable Long groupId) {
-        userService.addUserToGroup(userId, groupId);
+    @PostMapping("/{nickName}/groups/{groupId}")
+    public ResponseEntity<Void> addUserToGroup(@PathVariable String nickName, @PathVariable Long groupId) {
+        log.info("Adding User {} to group with id {}", nickName, groupId);
+        userService.addUserToGroup(nickName, groupId);
         return ResponseEntity.ok().build();
     }
 

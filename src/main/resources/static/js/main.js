@@ -218,19 +218,43 @@ async function createGroup(event) {
     }
 }
 
+// async function addUserToGroup(event) {
+//     event.preventDefault();
+//     const groupId = document.querySelector('#groupId').value;
+//     const userId = document.querySelector('#userId').value;
+//     if (groupId && userId && stompClient) {
+//         stompClient.send("/app/group.addUser", {},
+//             JSON.stringify({ groupId: groupId, userId: userId }));
+//         await findAndDisplayGroups();
+//     }
+// }
+
 async function addUserToGroup(event) {
     event.preventDefault();
     const groupId = document.querySelector('#groupId').value;
     const userId = document.querySelector('#userId').value;
-    if (groupId && userId && stompClient) {
-        stompClient.send("/app/group.addUser", {},
-            JSON.stringify({ groupId: groupId, userId: userId }));
-        await findAndDisplayGroups();
+    if (groupId && userId) {
+        try {
+            const response = await fetch(`/users/${userId}/groups/${groupId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            });
+            if (response.ok) {
+                // Call findAndDisplayGroups after adding user to group
+                await findAndDisplayGroups();
+            } else {
+                console.error('Failed to add user to group');
+            }
+        } catch (error) {
+            console.error('Error adding user to group:', error);
+        }
     }
 }
 
 async function findAndDisplayGroups() {
-    console.log("Finding user groups ......");
     const groupsResponse = await fetch('/user-groups');
     const groups = await groupsResponse.json();
     const groupList = document.getElementById('userGroups');
@@ -257,12 +281,12 @@ async function findAndDisplayGroups() {
     const userSelect = document.querySelector('#userId');
     userSelect.innerHTML = '';
     users.forEach(user => {
-        if (user.nickName !== nickname) {
+        //if (user.nickName !== nickname) {
             const option = document.createElement('option');
             option.value = user.nickName;
             option.textContent = user.fullName;
             userSelect.appendChild(option);
-        }
+       // }
     });
 }
 

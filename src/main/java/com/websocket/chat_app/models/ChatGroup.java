@@ -16,7 +16,4 @@ public class ChatGroup {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
-
-    @ManyToMany(mappedBy = "groups", fetch = FetchType.LAZY)
-    private Set<User> users = new HashSet<>();
 }

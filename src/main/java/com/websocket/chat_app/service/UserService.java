@@ -61,11 +61,10 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
-    public void addUserToGroup(Long userId, Long groupId) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+    public void addUserToGroup(String nickName, Long groupId) {
+        User user = userRepository.findUserByNickName(nickName).orElseThrow(() -> new RuntimeException("User not found"));
         ChatGroup group = groupRepository.findById(groupId).orElseThrow(() -> new RuntimeException("Group not found"));
         user.getGroups().add(group);
-        group.getUsers().add(user);
         userRepository.save(user);
     }
 
