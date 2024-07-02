@@ -20,6 +20,7 @@ public class User {
     private Long id;
     private String nickName;
     private String fullName;
+
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
     private Status status;

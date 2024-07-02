@@ -6,6 +6,7 @@ import com.websocket.chat_app.models.Status;
 import com.websocket.chat_app.models.User;
 import com.websocket.chat_app.repository.GroupRepository;
 import com.websocket.chat_app.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -61,16 +62,21 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
-    public void addUserToGroup(Long userId, Long groupId) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+    public void addUserToGroup(String nickName, Long groupId) {
+        User user = userRepository.findUserByNickName(nickName).orElseThrow(() -> new RuntimeException("User not found"));
         ChatGroup group = groupRepository.findById(groupId).orElseThrow(() -> new RuntimeException("Group not found"));
         user.getGroups().add(group);
-        group.getUsers().add(user);
         userRepository.save(user);
     }
 
-    public Set<ChatGroup> getUserGroups(Long userId) {
+    public Set<ChatGroup> getUserGroups (Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        return user.getGroups();
+    }
+
+    @Transactional
+    public Set<ChatGroup> getUserGroups(String nickName) {
+        User user = userRepository.findUserByNickName(nickName).orElseThrow(() -> new RuntimeException("User not found"));
         return user.getGroups();
     }
 }

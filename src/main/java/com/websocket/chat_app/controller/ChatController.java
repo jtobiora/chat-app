@@ -1,9 +1,8 @@
 package com.websocket.chat_app.controller;
 
-import com.websocket.chat_app.models.ChatMessage;
-import com.websocket.chat_app.models.ChatNotification;
-import com.websocket.chat_app.models.User;
+import com.websocket.chat_app.models.*;
 import com.websocket.chat_app.service.ChatMessageService;
+import com.websocket.chat_app.service.GroupChatService;
 import com.websocket.chat_app.service.UserService;
 import com.websocket.chat_app.utils.EncryptionUtil;
 import jakarta.jms.JMSException;
@@ -17,12 +16,14 @@ import org.springframework.jms.core.MessagePostProcessor;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
+import java.util.Set;
 
 
 /*
@@ -43,6 +44,7 @@ public class ChatController {
     private final JmsTemplate jmsTemplate;
     private final UserService userService;
     private final SimpMessagingTemplate simpMessagingTemplate;
+    private final GroupChatService groupChatService;
 
 //    @MessageMapping("/chat")
 //    public void processMessage(@Payload ChatMessage chatMessage) {
@@ -138,9 +140,19 @@ public class ChatController {
      * */
     @MessageMapping("/user.addUser")
     //@SendTo("/user/public")
-    public void addUser(@Payload User user) {
+    public void addUser(@Payload User user, SimpMessageHeaderAccessor headerAccessor) {
         userService.saveUser(user);
         simpMessagingTemplate.convertAndSend("/topic/public", user);
+
+        // Add user to web socket session
+        headerAccessor.getSessionAttributes().put("username", user.getNickName());
+
+//        // Get groups of the user and subscribe to them
+//        Set<ChatGroup> groups = userService.getUserGroups(user.getNickName());
+//        for (ChatGroup group : groups) {
+//            System.out.println("name of group " + group.getName());
+//            //messagingTemplate.convertAndSend("/topic/groups/" + group.getName(), new ChatMessage());
+//        }
     }
 
     /*
@@ -164,4 +176,10 @@ public class ChatController {
 //                .ok(chatMessageService.countNewMessages(senderId, recipientId));
 //
 //    }
+
+    @MessageMapping("/chat.sendGroupMessage")
+    public void sendMessage(@Payload GroupChatMessage chatMessage) {
+        GroupChatMessage groupChatMessage = groupChatService.saveMessage(chatMessage);
+        messagingTemplate.convertAndSend("/topic/groups/" + chatMessage.getGroupName(), groupChatMessage);
+    }
 }

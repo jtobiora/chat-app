@@ -4,6 +4,7 @@ const usernamePage = document.querySelector('#username-page');
 const chatPage = document.querySelector('#chat-page');
 const usernameForm = document.querySelector('#usernameForm');
 const messageForm = document.querySelector('#messageForm');
+const groupMessageForm = document.querySelector('#groupMessageForm');
 const messageInput = document.querySelector('#message');
 const connectingElement = document.querySelector('.connecting');
 const chatArea = document.querySelector('#chat-messages');
@@ -15,7 +16,44 @@ let stompClient = null;
 let nickname = null;
 let fullname = null;
 let selectedUserId = null;
+let selectedGroupName = null;
 
+window.onload = function() {
+    document.querySelector('.tablinks').click();
+};
+
+function openTab(evt, tabName) {
+    const tabcontent = document.getElementsByClassName("tabcontent");
+    for (let i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+    }
+    const tablinks = document.getElementsByClassName("tablinks");
+    for (let i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+    }
+    document.getElementById(tabName).style.display = "block";
+    evt.currentTarget.className += " active";
+    if (tabName === 'GroupChat') {
+        loadUserGroups();
+    }
+
+    // Show/hide message forms based on the selected tab
+    if (tabName === 'PrivateChat') {
+        document.getElementById('messageForm').classList.remove('hidden');
+        document.getElementById('groupMessageForm').classList.add('hidden');
+    } else if (tabName === 'GroupChat') {
+        document.getElementById('messageForm').classList.add('hidden');
+        document.getElementById('groupMessageForm').classList.remove('hidden');
+    }
+}
+
+usernameForm.addEventListener('submit', connect, true); // step 1
+messageForm.addEventListener('submit', sendMessage, true);
+logout.addEventListener('click', onLogout, true);
+window.onbeforeunload = () => onLogout();
+createGroupForm.addEventListener('submit', createGroup, true);
+addUserToGroupForm.addEventListener('submit', addUserToGroup, true);
+groupMessageForm.addEventListener('submit', sendMessageToGroup, true);
 
 function connect(event) {
     nickname = document.querySelector('#nickname').value.trim();
@@ -34,8 +72,8 @@ function connect(event) {
 }
 
 function onConnected() {
-    console.log(`Subscribing to::::: /queue/${nickname}/messages`);
     stompClient.subscribe(`/queue/${nickname}/messages`, onMessageReceived); //user subscribes to their own queue for receiving messages
+
     console.log(`Subscribed to: /queue/${nickname}/messages`);
 
     stompClient.subscribe(`/topic/public`, onMessageReceived);
@@ -50,6 +88,7 @@ function onConnected() {
 
     // Call findAndDisplayGroups after user is connected
     findAndDisplayGroups().then();
+    subscribeToUserGroups(); // Call this function to subscribe to user's groups
 }
 
 async function findAndDisplayConnectedUsers() {
@@ -189,14 +228,6 @@ function onLogout() {
     window.location.reload();
 }
 
-usernameForm.addEventListener('submit', connect, true); // step 1
-messageForm.addEventListener('submit', sendMessage, true);
-logout.addEventListener('click', onLogout, true);
-window.onbeforeunload = () => onLogout();
-
-createGroupForm.addEventListener('submit', createGroup, true);
-addUserToGroupForm.addEventListener('submit', addUserToGroup, true);
-
 async function createGroup(event) {
     event.preventDefault();
     const groupName = document.querySelector('#groupName').value.trim();
@@ -218,19 +249,43 @@ async function createGroup(event) {
     }
 }
 
+// async function addUserToGroup(event) {
+//     event.preventDefault();
+//     const groupId = document.querySelector('#groupId').value;
+//     const userId = document.querySelector('#userId').value;
+//     if (groupId && userId && stompClient) {
+//         stompClient.send("/app/group.addUser", {},
+//             JSON.stringify({ groupId: groupId, userId: userId }));
+//         await findAndDisplayGroups();
+//     }
+// }
+
 async function addUserToGroup(event) {
     event.preventDefault();
     const groupId = document.querySelector('#groupId').value;
     const userId = document.querySelector('#userId').value;
-    if (groupId && userId && stompClient) {
-        stompClient.send("/app/group.addUser", {},
-            JSON.stringify({ groupId: groupId, userId: userId }));
-        await findAndDisplayGroups();
+    if (groupId && userId) {
+        try {
+            const response = await fetch(`/users/${userId}/groups/${groupId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            });
+            if (response.ok) {
+                // Call findAndDisplayGroups after adding user to group
+                await findAndDisplayGroups();
+            } else {
+                console.error('Failed to add user to group');
+            }
+        } catch (error) {
+            console.error('Error adding user to group:', error);
+        }
     }
 }
 
 async function findAndDisplayGroups() {
-    console.log("Finding user groups ......");
     const groupsResponse = await fetch('/user-groups');
     const groups = await groupsResponse.json();
     const groupList = document.getElementById('userGroups');
@@ -257,12 +312,124 @@ async function findAndDisplayGroups() {
     const userSelect = document.querySelector('#userId');
     userSelect.innerHTML = '';
     users.forEach(user => {
-        if (user.nickName !== nickname) {
+        //if (user.nickName !== nickname) {
             const option = document.createElement('option');
             option.value = user.nickName;
             option.textContent = user.fullName;
             userSelect.appendChild(option);
-        }
+       // }
     });
+}
+
+// Fetch and display user groups
+async function loadUserGroups() {
+    try {
+        const userGroupsResponse = await fetch(`/users/groups/${nickname}`);
+        if (!userGroupsResponse.ok) {
+            throw new Error('Failed to fetch user groups');
+        }
+        const userGroups = await userGroupsResponse.json();
+        const userGroupsList = document.getElementById('userGroups');
+        userGroupsList.innerHTML = '';
+
+        userGroups.forEach(group => {
+            const listItem = document.createElement('li');
+            listItem.textContent = group.name;
+            userGroupsList.appendChild(listItem);
+        });
+    } catch (error) {
+        console.error('Error loading user groups:', error);
+    }
+}
+
+async function subscribeToUserGroups() {
+    try {
+        const userGroupsResponse = await fetch(`/users/groups/${nickname}`);
+        if (!userGroupsResponse.ok) {
+            throw new Error('Failed to fetch user groups');
+        }
+        const userGroups = await userGroupsResponse.json();
+        userGroups.forEach(group => {
+            stompClient.subscribe(`/topic/groups/${group.name}`, onGroupMessageReceived);
+            console.log(`Subscribed to group: /topic/groups/${group.name}`);
+        });
+    } catch (error) {
+        console.error('Error subscribing to user groups:', error);
+    }
+}
+
+function selectGroup(event) {
+    var selectedGroup = event.target.closest('li'); // Get the closest <li> element clicked
+    if (!selectedGroup) return; // Do nothing if no <li> element is clicked
+
+    // Clear active class from all list items
+    var groups = document.getElementById('userGroups').getElementsByTagName('li');
+    for (var i = 0; i < groups.length; i++) {
+        groups[i].classList.remove('active');
+    }
+
+    // Add active class to the clicked group
+    selectedGroup.classList.add('active');
+
+    // Show/hide message form based on the selected tab
+    const groupMessageForm = document.getElementById('groupMessageForm');
+    if (selectedGroup) {
+        groupMessageForm.classList.remove('hideme');
+        selectedGroupName = selectedGroup.textContent;
+    } else {
+        groupMessageForm.classList.add('hideme');
+        selectedGroupName = null;
+    }
+
+    // Logic to update chat area or perform other actions based on the selected group
+    var groupId = selectedGroup.getAttribute('data-group-id');
+}
+
+function onGroupMessageReceived(payload) {
+    const message = JSON.parse(payload.body);
+    displayGroupMessage(message.senderId, message.content);
+}
+
+function sendMessageToGroup(event) {
+    event.preventDefault();
+    const groupMessageInput = document.getElementById('groupMessage').value.trim();
+
+    if (groupMessageInput && stompClient) {
+        const groupChatMessage = {
+            senderId: nickname,
+            content: groupMessageInput,
+            groupName: selectedGroupName,
+            timestamp: new Date()
+        };
+
+        console.log("Message to send: ", groupChatMessage);
+        // Send message to the group via WebSocket
+        stompClient.send("/app/chat.sendGroupMessage", {}, JSON.stringify(groupChatMessage));
+
+        // Clear the input field
+        document.getElementById('groupMessage').value = '';
+
+        // Display the message in the chat area
+        displayGroupMessage(nickname, groupChatMessage.content);
+    }
+
+    const chatArea = document.getElementById('chatArea');
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function displayGroupMessage(senderId, content) {
+    const chatArea = document.getElementById('chatArea');
+    const messageContainer = document.createElement('div');
+    messageContainer.classList.add('message');
+    if (senderId === nickname) {
+        messageContainer.classList.add('sender');
+    } else {
+        messageContainer.classList.add('receiver');
+    }
+    const message = document.createElement('p');
+    message.textContent = `${senderId}: ${content}`;
+    messageContainer.appendChild(message);
+    chatArea.appendChild(messageContainer);
+    chatArea.scrollTop = chatArea.scrollHeight;
 }
 

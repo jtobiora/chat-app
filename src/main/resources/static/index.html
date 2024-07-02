@@ -24,25 +24,55 @@
 </div>
 
 <div class="chat-container hidden" id="chat-page">
-    <div class="users-list">
-        <div class="users-list-container">
-            <h2>Online Users</h2>
-            <ul id="connectedUsers"></ul>
+    <div class="tabs">
+        <button class="tablinks" onclick="openTab(event, 'PrivateChat')">Private Chat</button>
+        <button class="tablinks" onclick="openTab(event, 'GroupChat')">Group Chat</button>
+        <button class="tablinks" onclick="openTab(event, 'AddGroup')">Add Group</button>
+        <button class="tablinks" onclick="openTab(event, 'AddUserToGroup')">Add User to Group</button>
+    </div>
+
+    <div id="PrivateChat" class="tabcontent">
+        <div class="users-list">
+            <div class="users-list-container">
+                <h2>Online Users</h2>
+                <ul id="connectedUsers"></ul>
+            </div>
+            <div>
+                <p id="connected-user-fullname"></p>
+                <a class="logout" href="javascript:void(0)" id="logout">Logout</a>
+            </div>
         </div>
-        <div>
-            <p id="connected-user-fullname"></p>
-            <a class="logout" href="javascript:void(0)" id="logout">Logout</a>
+        <div class="chat-area">
+            <div class="chat-messages" id="chat-messages"></div>
+            <form id="messageForm" name="messageForm" class="hidden">
+                <div class="message-input">
+                    <input autocomplete="off" type="text" id="message" placeholder="Type your message...">
+                    <button>Send</button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <div class="groups-list">
-        <div class="groups-list-container">
-            <h2>Groups</h2>
-            <ul id="userGroups"></ul>
+    <div id="GroupChat" class="tabcontent">
+        <div class="groups-list">
+            <div class="groups-list-container">
+                <h2>Groups</h2>
+                <ul id="userGroups" onclick="selectGroup(event)"></ul>
+            </div>
         </div>
+        <div id="chatArea">
+            <!-- Chat messages will be appended here -->
+        </div>
+        <!-- Form for group messaging -->
+        <form id="groupMessageForm" name="groupMessageForm" class="hideme">
+            <div class="message-input">
+                <input autocomplete="off" type="text" id="groupMessage" placeholder="Type your group message...">
+                <button>Send</button>
+            </div>
+        </form>
     </div>
 
-    <div class="group-management">
+    <div id="AddGroup" class="tabcontent">
         <div id="group-form">
             <h2>Create Group</h2>
             <form id="createGroupForm">
@@ -51,7 +81,9 @@
                 <button type="submit">Create Group</button>
             </form>
         </div>
+    </div>
 
+    <div id="AddUserToGroup" class="tabcontent">
         <div id="add-user-to-group-form">
             <h2>Add User to Group</h2>
             <form id="addUserToGroupForm">
@@ -63,20 +95,10 @@
             </form>
         </div>
     </div>
-
-    <div class="chat-area">
-        <div class="chat-messages" id="chat-messages"></div>
-        <form id="messageForm" name="messageForm" class="hidden">
-            <div class="message-input">
-                <input autocomplete="off" type="text" id="message" placeholder="Type your message...">
-                <button>Send</button>
-            </div>
-        </form>
-    </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.1.4/sockjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
-<script src="/js/main.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>
